@@ -1,0 +1,113 @@
+module mux_2 #(
+  parameter w=16
+)(
+  input [w-1:0]d0,
+  input [w-1:0]d1,
+  input s,
+  output [w-1:0]q
+  );
+  assign q = (~s) ? d0: {w{1'bz}};
+  assign q = (s) ? d1: {w{1'bz}};
+endmodule
+
+module counter #(
+  parameter w = 4
+  )(
+  input clk,
+  input clr,
+  input rst_b,
+  input incr,
+  output  [w-1:0]out
+  );
+  wire [w-1:0] rca_out;
+  wire [w-1:0] bist_out;
+  wire [w-1:0] mux_out;
+  reg [w-1:0]one;
+  initial begin
+    one = {w-1{1'b0}}, 1'b1;
+  end
+  rca #(.w(w)) rca (
+    .x(bist_out),
+    .y(one),
+    .z(rca_out),
+    .cin(1'b0),
+    .overflow(),
+    .cout()
+    ); 
+  rgst_no_shift #(.w(w)) register(
+    .clk(clk),
+    .rst_b(rst_b),
+    .clr(clr),
+    .d(mux_out),
+    .q(bist_out)
+  );
+    genvar i;
+    generate
+      for (i = 0; i < w; i = i + 1) begin
+        mux_2 #(.w(1)) mux (
+          .d0(bist_out[i]),
+          .d1(rca_out[i]),
+          .q(mux_out[i]),
+          .s(incr)
+          );
+      end 
+    endgenerate
+
+    assign out = bist_out;
+endmodule
+
+
+module counter_tb;
+  reg clk;
+  reg clr;
+  reg rst_b;
+  reg incr;
+  wire [3:0] out;
+
+  
+  counter #(.w(4) ) rca_tb (
+    .clk(clk),
+    .clr(clr),
+    .rst_b(rst_b),
+    .incr(incr),
+    .out(out)
+  );
+  localparam CYCLES = 30, PERIOD = 100;
+  initial begin
+    clk = 0;
+    repeat(CYCLES*2) begin
+      #(PERIOD/2) 
+      clk = ~clk;
+      
+    end
+  end
+  initial begin
+    rst_b = 0;
+    clr = 0;
+    incr = 0;
+    #40
+    rst_b = 1;
+  end
+  initial begin
+    repeat(CYCLES) begin
+      #(PERIOD)
+      $display("%b %b | %b \n", clr, incr, out);
+      //$display("%d %d | %d\n\n", clr, rst_b, out);
+    end
+  end
+  initial begin
+    $display("clr incr | out z\n");
+    incr = 1;
+    #(PERIOD*5)
+    clr = 1;
+    #(PERIOD)
+    clr = 0;
+    #(PERIOD*3)
+    incr = 1;
+    #(PERIOD*3)
+    incr = 0;
+    #(PERIOD*3)
+    incr = 1;
+    
+  end
+endmodule

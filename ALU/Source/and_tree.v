@@ -1,0 +1,58 @@
+module and_gate(
+  input x,
+  input y,
+  input z);
+  assign z = x & y;
+endmodule
+
+module and_tree #(
+  parameter w = 16
+  )(
+  input [w-1:0]x,
+  output out
+  );
+  wire [w-2:0] results;
+  and_gate and_gate_init(
+    .x(x[0]),
+    .y(x[1]),
+    .z(results[0])
+    );
+  genvar i;
+  generate
+    for(i = 1; i < w - 1; i = i +1) begin
+      and_gate and_gate(
+        .x(x[i]),
+        .y(results[i-1]),
+        .z(results[i])
+        );
+    end
+  endgenerate
+  and_gate and_gate_final(
+    .x(x[w-1]),
+    .y(results[w-2]),
+    .z(out)
+    );
+    
+    
+endmodule
+
+module and_tree_tb;
+  reg [7:0]x;
+  wire o;
+  and_tree #(.w(8)) and_tree(
+    .x(x),
+    .out(o)
+    );
+  initial begin
+    x = 14;
+    #20
+    $display("%b | %b\n", x, o);
+    x = 0;
+    #20
+    $display("%b | %b\n", x, o);
+    x = 255;
+    #500
+    $display("%b | %b\n", x, o);
+end
+  
+endmodule
